@@ -88,8 +88,8 @@ ml_model <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area +
             X3_Wall_Area + X4_Roof_Area + X5_Overall_Height + 
             X6_Orientation + X7_Glazing_Area + X8_Glazing_Area_Distribution, 
             data = train_data)
-
-summary(ml_model)
+#plot(ml_model)
+#summary(ml_model)
 ```
 
 - validation for model 1
