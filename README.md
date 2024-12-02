@@ -31,7 +31,7 @@ The main objective of this project is to analyze the dataset in terms of the var
 First, explore the dataset to determine whether the dataset is normally distributed or not. Furthermore, evaluate regression models by splitting the data into training, test sets, and computing prediction errors in order to assess model performance. Utilizing the following:
 
 - Multiple Linear Regression
-- Stepwise Logistic Regression
+- Multinomial Logistic Regression
 - Decision Tree Regression
 - Correlation Matrix
 
