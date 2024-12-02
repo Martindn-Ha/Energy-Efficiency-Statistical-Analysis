@@ -6,7 +6,7 @@ Project Proposal: Estimating heating and cooling loads based on building charact
 Dataset Link: https://archive.ics.uci.edu/dataset/242/energy+efficiency
 
 The dataset for this analysis comes from the UCI Machine Learning Repository and contains housing price data from a metropolitan area. The dataset has 8 variables, 2 target values, and
-768 observations with no missing values. The data was collected from performing energy analysis using 12 different building shapes simulated in Ecotect.The target variables are heating load (HL) and cooling load (CL), representing the energy requirements for maintaining thermal comfort within buildings.
+768 observations with no missing values. The data was collected from performing energy analysis using 12 different building shapes simulated in Ecotect. The target variables are heating load (HL) and cooling load (CL), representing the energy requirements for maintaining thermal comfort within buildings.
 
 <ins>Variables:</ins>
 
