@@ -1,0 +1,309 @@
+---
+title: 'Project 2: Energy-Efficiency-Statistical-Analysis, Draft 1'
+author: "Christina Mourad, Victor Um, Joe De Leon, Martin Ha"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=4, fig.height=3)
+
+```
+
+```{r}
+# packages
+
+# install.packages(c("readxl", "ggplot2", "dplyr", "tidyr", "purrr", "corrplot", "infotheo", "caret", "glmnet", "rpart", "rpart.plot", "caTools", "devtools"))
+#library(ggplot2)
+library(dplyr)
+#library(tidyr)
+library(readxl)
+#library(purrr)
+#library(corrplot)
+#library(infotheo)
+library(caret)
+#library(car)
+#library(glmnet)
+library(rpart)
+library(rpart.plot)
+library(caTools)
+#devtools::install_github("gbm-developers/gbm3")
+library(gbm3)
+
+```
+
+#1. Load Data
+
+- Data Loading and Variable renaming:
+
+```{r}
+
+dataset <- read_excel("/Users/martinha/Desktop/Math 444/Energy-Efficiency-Statistical-Analysis/ENB2012_data.xlsx")
+
+#dataset <- dataset %>%
+#  rename('X1_Relative_Compactness' = X1, 'X2_Surface_Area' = X2, 'X3_Wall_Area' = X3, 'X4_Roof_Area' = X4, 'X5_Overall_Height' = X5, 'X6_Orientation' = X6, 'X7_Glazing_Area' = X7, 'X8_Glazing_Area_Distribution' = X8, 'Y1_Heating_Load' = Y1, 'Y2_Cooling_Load' = Y2)
+```
+
+## Implementing Decision Tree Regression for Y1 (Heating Load)
+
+- train, validation, test
+
+```{r}
+set.seed(123)
+
+#training data
+dataset_no_Y2 <- dataset[, !names(dataset) %in% "Y2"]
+split1 <- sample.split(dataset_no_Y2$Y1, SplitRatio = 0.6)
+train_data <- subset(dataset_no_Y2, split1 == TRUE)
+remaining_data <- subset(dataset_no_Y2, split1 == FALSE)
+
+# Step 2: Split the remaining 40% into 50% validation and 50% test (20% each)
+split2 <- sample.split(remaining_data$Y1, SplitRatio = 0.5)
+validation_data <- subset(remaining_data, split2 == TRUE)
+test_data <- subset(remaining_data, split2 == FALSE)
+```
+
+- Y1 Baseline Model
+
+```{r}
+target_variable <- train_data$Y1
+
+# Step 1: Calculate the mean of the target variable
+# Note: use mean as baseline model; Asghari[10]
+mean_value <- mean(target_variable)
+
+# Step 2: Predict the mean for all observations
+mean_predictions <- rep(mean_value, length(target_variable))
+
+# Step 3: Calculate the RMSE or MSE for the mean model
+mse <- mean((mean_predictions - target_variable)^2)  # MSE
+rmse <- sqrt(mse)  # RMSE
+
+# Output the result
+cat("Mean Model RMSE for Y1:", rmse, "\n")
+cat("Mean Model MSE for Y1:", mse, "\n")
+```
+
+- decision tree training
+
+```{r}
+decision_tree <- rpart(Y1 ~ X1 + X2 + X3 + X4 + X5 + X6 + X7 + X8,
+                       data = train_data,
+                       method = "anova",
+                       control = rpart.control(cp = 0.01, minsplit = 2, maxdepth = 30))
+
+```
+
+- decision tree r^2 and summary
+
+```{r}
+train_predictions <- predict(decision_tree, train_data)
+
+# Actual values of Y1_Heating_Load in training data
+actual_train <- train_data$Y1
+
+# Residual Sum of Squares (RSS)
+rss <- sum((actual_train - train_predictions)^2)
+
+# Total Sum of Squares (TSS)
+tss <- sum((actual_train - mean(actual_train))^2)
+
+# R-squared
+r_squared <- 1 - (rss / tss)
+
+print(paste("R-squared: ", r_squared))
+summary(decision_tree)
+```
+
+- validation 
+
+```{r}
+# Make predictions on the validation data
+validation_predictions <- predict(decision_tree, validation_data)
+
+# Calculate Mean Squared Error (MSE) for validation data
+actual_validation <- validation_data$Y1
+validation_mse <- mean((validation_predictions - actual_validation)^2)
+validation_rmse <- sqrt(validation_mse)
+print(paste("Validation Mean Squared Error:", validation_mse))
+print(paste("Validation Root Mean Squared Error:", validation_rmse))
+```
+
+- testing
+
+```{r}
+# Make predictions on the test data
+test_predictions <- predict(decision_tree, test_data)
+
+# Calculate Mean Squared Error (MSE) for test data
+actual_test <- test_data$Y1
+test_mse <- mean((test_predictions - actual_test)^2)
+test_rmse <- sqrt(test_mse)
+print(paste("Test Mean Squared Error:", test_mse))
+print(paste("Test Root Mean Squared Error:", test_rmse))
+```
+
+- decision tree visual
+
+```{r}
+rpart.plot(decision_tree, type = 1, extra = 101, under = TRUE, cex = 0.8)
+```
+
+- AIC/BIC
+
+```{r}
+num_parameters <- length(decision_tree$frame$var[decision_tree$frame$var == "<leaf>"])
+
+n <- nrow(dataset_no_Y2)
+log_likelihood <- -n / 2 * (log(2 * pi * rss / n) + 1)
+
+# 4. Calculate AIC and BIC
+aic <- 2 * num_parameters - 2 * log_likelihood
+bic <- log(n) * num_parameters - 2 * log_likelihood
+
+aic
+bic
+```
+
+- Grid Search CV
+
+```{r}
+# Define train control with 10-fold cross-validation
+train_control <- trainControl(method = "cv", number = 10)
+
+# Define the grid of hyperparameters to tune (only cp for rpart)
+grid <- expand.grid(
+  cp = seq(0.001, 0.1, by = 0.01)  # Wider range for complexity parameter
+)
+
+
+# Train the model with cross-validation and hyperparameter grid search
+grid_search <- train(
+  Y1 ~ X1 + X2 + 
+    X3 + X4 + X5 + 
+    X6 + X7 + X8,
+  data = train_data,
+  method = "rpart",  # Decision tree method
+  trControl = train_control,  # 10-fold cross-validation
+  tuneGrid = grid           # Include the grid for hyperparameter tuning
+)
+
+```
+
+- GridSearch validation
+
+```{r}
+best_model <- grid_search$finalModel
+predictions <- predict(best_model, newdata = validation_data)
+
+actual_validation <- validation_data$Y1
+validation_mse <- mean((predictions - actual_validation)^2)
+validation_rmse <- sqrt(validation_mse)
+print(paste("Validation Mean Squared Error:", validation_mse))
+print(paste("Validation Root Mean Squared Error:", validation_rmse))
+```
+
+- GridSearch test
+
+```{r}
+test_predictions <- predict(best_model, test_data)
+
+actual_test <- test_data$Y1
+test_mse <- mean((test_predictions - actual_test)^2)
+test_rmse <- sqrt(test_mse)
+print(paste("Validation Mean Squared Error:", test_mse))
+print(paste("Validation Root Mean Squared Error:", test_rmse))
+```
+
+- visualize gridsearch decision tree
+
+```{r}
+rpart.plot(best_model, 
+           type = 3, 
+           extra = 101, 
+           box.palette = "Blues", 
+           tweak = 0.8)  # Adjust the plot size
+```
+
+- AIC/BIC values
+
+```{r}
+# Check the structure of cptable and find the best CP based on rel error
+best_cp <- best_model$cptable[which.min(best_model$cptable[,"rel error"]), "CP"]
+
+# Extract the row corresponding to the best CP
+best_cp_row <- best_model$cptable[best_model$cptable[, "CP"] == best_cp, ]
+
+# Get the rel error (used as deviance here)
+rel_error <- best_cp_row["rel error"]
+
+# Deviance (approximated as -2 * log-likelihood), for simplicity we use rel error as a proxy for deviance
+deviance <- rel_error * nrow(train_data)  # scaling to number of observations
+
+# Approximate log-likelihood
+logLik_approx <- -deviance / 2
+
+# Number of parameters (leaf nodes in the model)
+num_parameters <- length(best_model$frame$var[best_model$frame$var == "<leaf>"])
+
+# Number of observations in the dataset
+n <- nrow(train_data)
+
+# Calculate AIC and BIC
+AIC_value <- 2 * num_parameters - 2 * logLik_approx
+BIC_value <- log(n) * num_parameters - 2 * logLik_approx
+
+# Print AIC and BIC
+print(paste("AIC: ", AIC_value))
+print(paste("BIC: ", BIC_value))
+
+```
+
+```{r}
+best_hyperparameters <- grid_search$bestTune
+print(best_hyperparameters)
+```
+
+## Implementing Decision Tree Regression for Y2 (Cooling Load)
+
+- train, validation, test
+
+```{r}
+set.seed(123)
+
+# Training data
+dataset_no_Y1 <- dataset[, !names(dataset) %in% "Y1_Heating_Load"]
+train_indices2 <- createDataPartition(dataset_no_Y1$Y2_Cooling_Load, p = 0.6, list = FALSE)
+train_data2 <- dataset_no_Y1[train_indices2, ]  # Corrected to use train_indices2
+
+# Split 40% remaining data into validation and testing
+remaining_data2 <- dataset_no_Y1[-train_indices2, ]  # Corrected to use train_indices2
+valid_indices2 <- createDataPartition(remaining_data2$Y2_Cooling_Load, p = 0.5, list = FALSE)
+
+# Validation and testing data
+valid_data2 <- remaining_data2[valid_indices2, ]  # Corrected to use valid_indices2
+test_data2 <- remaining_data2[-valid_indices2, ] 
+```
+
+- Y2 Baseline Model
+
+```{r}
+# Y2 Baseline Model
+target_variable2 <- train_data2$Y2_Cooling_Load
+
+# Step 1: Calculate the mean of the target variable
+mean_value2 <- mean(target_variable2)
+
+# Step 2: Predict the mean for all observations
+mean_predictions2 <- rep(mean_value2, length(target_variable2))  # Corrected to use mean_value2 and target_variable2
+
+# Step 3: Calculate the MSE or RMSE for the mean model
+mse2 <- mean((mean_predictions2 - target_variable2)^2)  # MSE corrected
+rmse2 <- sqrt(mse2)  # RMSE corrected
+
+# Output the result
+cat("Mean Model RMSE for Y2:", rmse2, "\n")  # Corrected rmse variable
+cat("Mean Model MSE for Y2:", mse2, "\n")    # Corrected mse variable
+```
