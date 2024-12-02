@@ -69,6 +69,7 @@ walk(plots, print)
 - Spearman Correlation Matrix
 
 ```{r}
+#use spearman because it doesn't assume normal distribution
 
 # Calculate Spearman correlation for all columns in the dataset
 #cor(dataset, method = "spearman")
