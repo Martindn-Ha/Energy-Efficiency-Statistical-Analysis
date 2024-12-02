@@ -60,6 +60,8 @@ df <- df %>%
 
 ```
 
+- Turn cont. variables into catagorical
+
 ```{r}
 quantiles <- quantile(df$Y1_Heating_Load, probs = c(0, 0.33, 0.66, 1))
 
@@ -72,27 +74,81 @@ df$Y1_class <- cut(df$Y1_Heating_Load,
 summary(df$Y1_Heating_Load[df$Y1_class == "Low"])
 summary(df$Y1_Heating_Load[df$Y1_class == "Medium"])
 summary(df$Y1_Heating_Load[df$Y1_class == "High"])
+table(df$Y1_class)
 ```
+
+## Multinom. Model for Y1
 
 ```{r}
 model <- multinom(Y1_class ~ X1_Relative_Compactness + X2_Surface_Area + X3_Wall_Area + 
-                  X4_Roof_Area + X5_Overall_Height + X6_Orientation + X7_Glazing_Area + 
-                  X8_Glazing_Area_Distribution, data = df)
+                  X5_Overall_Height + X6_Orientation + X7_Glazing_Area, data = df)
 #vif(model)
 #summary(model)
 ```
 
-```{r}
-predictions <- predict(model, df)
-accuracy <- mean(predictions == df$Y1_class)
-```
+- Predict
 
 ```{r}
-print(paste("Accuracy: ", round(accuracy * 100, 2), "%"))
+predictions <- predict(model, df)
 ```
+
+- AIC/BIC Values
+
+```{r}
+aic_value <- AIC(model)
+print(paste("AIC:", aic_value))
+
+# Calculate BIC
+bic_value <- BIC(model)
+print(paste("BIC:", bic_value))
+```
+
+- Confusion Matrix
+
 ```{r}
 predicted_classes <- predict(model, newdata = df, type = "class")
 conf_matrix <- confusionMatrix(predicted_classes, df$Y1_class)
 print(conf_matrix)
 ```
 
+## Multinom. Model for Y2
+
+```{r}
+quantiles <- quantile(df$Y2_Cooling_Load, probs = c(0, 0.33, 0.66, 1))
+
+df$Y2_class <- cut(df$Y2_Cooling_Load,
+                   breaks = quantiles,
+                   labels = c("Low", "Medium", "High"),
+                   include.lowest = TRUE)
+
+
+summary(df$Y2_Cooling_Load[df$Y2_class == "Low"])
+summary(df$Y2_Cooling_Load[df$Y2_class == "Medium"])
+summary(df$Y2_Cooling_Load[df$Y2_class == "High"])
+table(df$Y2_class)
+```
+
+```{r}
+model2 <- multinom(Y2_class ~ X1_Relative_Compactness + X2_Surface_Area + X3_Wall_Area + 
+                  X5_Overall_Height + X6_Orientation + X7_Glazing_Area, data = df)
+#vif(model)
+#summary(model)
+```
+```{r}
+predictions <- predict(model2, df)
+```
+
+```{r}
+aic_value2 <- AIC(model2)
+print(paste("AIC:", aic_value2))
+
+# Calculate BIC
+bic_value2 <- BIC(model2)
+print(paste("BIC:", bic_value2))
+```
+
+```{r}
+predicted_classes2 <- predict(model2, newdata = df, type = "class")
+conf_matrix2 <- confusionMatrix(predicted_classes2, df$Y1_class)
+print(conf_matrix2)
+```
