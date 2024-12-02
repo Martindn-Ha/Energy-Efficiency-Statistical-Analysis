@@ -1,0 +1,121 @@
+---
+title: 'Project 2: Energy-Efficiency-Statistical-Analysis, Draft 1'
+author: "Christina Mourad, Victor Um, Joe De Leon, Martin Ha"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=4, fig.height=3)
+
+```
+
+```{r}
+# packages
+
+# install.packages(c("readxl", "ggplot2", "dplyr", "tidyr", "purrr", "corrplot", "infotheo", "caret", "glmnet"))
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readxl)
+library(purrr)
+library(corrplot)
+library(infotheo)
+library(caret)
+library(car)
+library(glmnet)
+```
+
+#1. Exploring Data
+
+- Data Loading and Variable renaming:
+
+```{r}
+
+dataset <- read_excel("/Users/martinha/Desktop/Math 444/Energy-Efficiency-Statistical-Analysis/ENB2012_data.xlsx")
+
+dataset <- dataset %>%
+  rename('X1_Relative_Compactness' = X1, 'X2_Surface_Area' = X2, 'X3_Wall_Area' = X3, 'X4_Roof_Area' = X4, 'X5_Overall_Height' = X5, 'X6_Orientation' = X6, 'X7_Glazing_Area' = X7, 'X8_Glazing_Area_Distribution' = X8, 'Y1_Heating_Load' = Y1, 'Y2_Cooling_Load' = Y2)
+```
+
+ - Data Summary:
+ 
+```{r}
+summary(dataset)
+```
+
+- Understanding Distribution:
+ 
+```{r}
+plots <- map(names(dataset), ~ {
+  if (is.numeric(dataset[[.x]])) {
+    # Freedman-Diaconis rule
+    IQR_value <- IQR(dataset[[.x]], na.rm = TRUE)
+    binwidth <- 2 * IQR_value / length(na.omit(dataset[[.x]]))^(1/3)
+    
+    ggplot(dataset, aes(x = !!sym(.x))) +  # Use sym() for tidy evaluation
+      geom_histogram(binwidth = binwidth, fill = "blue", color = "black", alpha = 0.7) +
+      labs(title = paste("Histogram of", .x),
+           x = .x,
+           y = "Frequency")
+  }
+})
+
+walk(plots, print)
+```
+
+- Spearman Correlation Matrix
+
+```{r}
+
+# Calculate Spearman correlation for all columns in the dataset
+#cor(dataset, method = "spearman")
+
+# Generate the correlation plot with better readability
+corrplot(spearman_corr_matrix, 
+         method = "circle",         # Circle method for plotting
+         type = "upper",            # Show upper triangle only
+         order = "hclust",          # Cluster the correlations
+         tl.col = "black",          # Text label color
+         tl.srt = 45,               # Rotate text labels to 45 degrees
+         tl.cex = 0.3,              # Reduce text size for labels
+         addCoef.col = "black",     # Color for correlation coefficients
+         number.cex = 0.5)    
+```
+
+- P-Values to test significance of each variable with each Target variable
+
+```{r}
+
+#Warnings appear due to rounded p-values, hardly significant
+suppressWarnings({
+  
+  # List of variables you want to test against Y1 and Y2
+  variables <- colnames(dataset)[!(colnames(dataset) %in% c("Y1_Heating_Load", "Y2_Cooling_Load"))]
+  
+  # Initialize an empty list to store p-values
+  p_values_Y1_Heating_Load <- numeric(length(variables))
+  p_values_Y2_Cooling_Load <- numeric(length(variables))
+  
+  # Loop through each variable and compute the Spearman correlation with Y1 and Y2
+  for (i in 1:length(variables)) {
+    # Spearman correlation with Y1
+    p_values_Y1_Heating_Load[i] <- cor.test(dataset[[variables[i]]], dataset$Y1_Heating_Load, method = "spearman")$p.value
+    
+    # Spearman correlation with Y2
+    p_values_Y2_Cooling_Load[i] <- cor.test(dataset[[variables[i]]], dataset$Y2_Cooling_Load, method = "spearman")$p.value
+  }
+  
+  # Create a data frame to display the results
+  results <- data.frame(
+    Variable = variables,
+    P_Value_Y1 = p_values_Y1_Heating_Load,
+    P_Value_Y2 = p_values_Y2_Cooling_Load
+  )
+  
+  # Print the results
+  print(results)
+})
+```
