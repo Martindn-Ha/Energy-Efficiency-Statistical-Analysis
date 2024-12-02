@@ -42,6 +42,25 @@ dataset <- dataset %>%
 
 ## Implementing Multiple Linear Regression for Y1 (Heating Load)
 
+- train, validation, test
+
+```{r}
+set.seed(123)
+
+#training data
+dataset_no_Y2 <- dataset[, !names(dataset) %in% "Y2_Cooling_Load"]
+train_indices <- createDataPartition(dataset_no_Y2$Y1_Heating_Load, p = 0.6, list = FALSE)
+train_data <- dataset_no_Y2[train_indices, ]
+
+#split %40 remaining data into validation and testing
+remaining_data <- dataset_no_Y2[-train_indices, ]
+valid_indices <- createDataPartition(remaining_data$Y1_Heating_Load, p = 0.5, list = FALSE)
+
+#validation and testing data
+valid_data <- remaining_data[valid_indices, ]
+test_data <- remaining_data[-valid_indices, ]
+```
+
 - Y1 Baseline Model
 ```{r}
 target_variable <- train_data$Y1_Heating_Load
@@ -62,24 +81,9 @@ cat("Mean Model RMSE for Y1:", rmse, "\n")
 cat("Mean Model MSE for Y1:", mse, "\n")
 ```
 
-- train, validation, test split
+- multiple linear model
 
 ```{r}
-set.seed(123)
-
-#training data
-dataset_no_Y2 <- dataset[, !names(dataset) %in% "Y2_Cooling_Load"]
-train_indices <- createDataPartition(dataset_no_Y2$Y1_Heating_Load, p = 0.6, list = FALSE)
-train_data <- dataset_no_Y2[train_indices, ]
-
-#split %40 remaining data into validation and testing
-remaining_data <- dataset_no_Y2[-train_indices, ]
-valid_indices <- createDataPartition(remaining_data$Y1_Heating_Load, p = 0.5, list = FALSE)
-
-#validation and testing data
-valid_data <- remaining_data[valid_indices, ]
-test_data <- remaining_data[-valid_indices, ]
-
 ml_model <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area + 
             X3_Wall_Area + X4_Roof_Area + X5_Overall_Height + 
             X6_Orientation + X7_Glazing_Area + X8_Glazing_Area_Distribution, 
@@ -91,7 +95,7 @@ summary(ml_model)
 - validation for model 1
 
 ```{r}
-predictions_val <- predict(model, newdata = valid_data)
+predictions_val <- predict(ml_model, newdata = valid_data)
 mse <- mean((predictions_val - valid_data$Y1_Heating_Load)^2) # Mean Squared Error
 rmse <- sqrt(mse)
 
@@ -102,7 +106,7 @@ rmse
 - testing for model 1
 
 ```{r}
-predictions_test <- predict(model, newdata = test_data)
+predictions_test <- predict(ml_model, newdata = test_data)
 mse <- mean((predictions_test - test_data$Y1_Heating_Load)^2) # Mean Squared Error
 rmse <- sqrt(mse)
 
@@ -151,8 +155,8 @@ rmse
 - AUC/BIC Score comparison (keeping/removing X4)
 
 ```{r}
-aic_value1 <- AIC(model)
-bic_value1 <- BIC(model)
+aic_value1 <- AIC(ml_model)
+bic_value1 <- BIC(ml_model)
 
 aic_value2 <- AIC(ml_noX4_regression_model2)
 bic_value2 <- BIC(ml_noX4_regression_model2)
@@ -166,17 +170,17 @@ cat("BIC for model2: ", bic_value2, "\n")
 - stepwise evaluations
 
 ```{r}
-backward_lm <- step(model, direction = "backward")
+backward_lm <- step(ml_model, direction = "backward")
 summary(backward_lm)
 ```
 
 ```{r}
-forward_lm <- step(model, direction = "forward")
+forward_lm <- step(ml_model, direction = "forward")
 summary(forward_lm)
 ```
 
 ```{r}
-bidirectional_lm <- step(model, direction = "both")
+bidirectional_lm <- step(ml_model, direction = "both")
 summary(bidirectional_lm)
 ```
 
@@ -242,3 +246,210 @@ bic <- n * log(ss_residual / n) + p * log(n)
 print(paste("BIC: ", bic))
 ```
 
+## Implementing Multiple Linear Regression for Y2 (Cooling Load)
+
+- train, validation, test
+
+```{r}
+set.seed(123)
+
+# Training data
+dataset_no_Y1 <- dataset[, !names(dataset) %in% "Y1_Heating_Load"]
+train_indices2 <- createDataPartition(dataset_no_Y1$Y2_Cooling_Load, p = 0.6, list = FALSE)
+train_data2 <- dataset_no_Y1[train_indices2, ]  # Corrected to use train_indices2
+
+# Split 40% remaining data into validation and testing
+remaining_data2 <- dataset_no_Y1[-train_indices2, ]  # Corrected to use train_indices2
+valid_indices2 <- createDataPartition(remaining_data2$Y2_Cooling_Load, p = 0.5, list = FALSE)
+
+# Validation and testing data
+valid_data2 <- remaining_data2[valid_indices2, ]  # Corrected to use valid_indices2
+test_data2 <- remaining_data2[-valid_indices2, ] 
+```
+
+- Y2 Baseline Model
+
+```{r}
+# Y2 Baseline Model
+target_variable2 <- train_data2$Y2_Cooling_Load
+
+# Step 1: Calculate the mean of the target variable
+mean_value2 <- mean(target_variable2)
+
+# Step 2: Predict the mean for all observations
+mean_predictions2 <- rep(mean_value2, length(target_variable2))  # Corrected to use mean_value2 and target_variable2
+
+# Step 3: Calculate the MSE or RMSE for the mean model
+mse2 <- mean((mean_predictions2 - target_variable2)^2)  # MSE corrected
+rmse2 <- sqrt(mse2)  # RMSE corrected
+
+# Output the result
+cat("Mean Model RMSE for Y2:", rmse2, "\n")  # Corrected rmse variable
+cat("Mean Model MSE for Y2:", mse2, "\n")    # Corrected mse variable
+```
+
+- multiple linear model
+
+```{r}
+ml_model2 <- lm(Y2_Cooling_Load ~ X1_Relative_Compactness + X2_Surface_Area + 
+            X3_Wall_Area + X4_Roof_Area + X5_Overall_Height + 
+            X6_Orientation + X7_Glazing_Area + X8_Glazing_Area_Distribution, 
+            data = train_data2)
+
+summary(ml_model)
+```
+
+- validation for model 2
+
+```{r}
+predictions_val2 <- predict(ml_model2, newdata = valid_data2)
+mse <- mean((predictions_val2 - valid_data2$Y2_Cooling_Load)^2) # Mean Squared Error
+rmse <- sqrt(mse)
+
+mse
+rmse
+```
+
+- testing for model 2
+
+```{r}
+predictions_test2 <- predict(ml_model2, newdata = test_data2)
+mse <- mean((predictions_test2 - test_data2$Y2_Cooling_Load)^2) # Mean Squared Error
+rmse <- sqrt(mse)
+
+mse
+rmse
+```
+
+-currently anti-aliasing original model2 to use VIF
+
+```{r}
+#alias(model)
+#remove X4 because of perfect dependence on other variable(s)
+ml_noX4_regression_model2 <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area + 
+            X3_Wall_Area + X5_Overall_Height + 
+            X6_Orientation + X7_Glazing_Area + X8_Glazing_Area_Distribution, 
+            data = train_data)
+vif(ml_noX4_regression_model2)
+```
+
+```{r}
+summary(ml_noX4_regression_model2)
+```
+
+-validation for ml_noX4_regression_model2
+
+```{r}
+predictions_val22 <- predict(ml_noX4_regression_model2, newdata = valid_data2)
+mse <- mean((predictions_val2 - valid_data2$Y2_Cooling_Load)^2) # Mean Squared Error
+rmse <- sqrt(mse)
+
+mse
+rmse
+```
+
+- testing for ml_noX4_regression_model2
+
+```{r}
+predictions_test2 <- predict(ml_noX4_regression_model2, newdata = test_data2)
+mse <- mean((predictions_test2 - test_data2$Y2_Cooling_Load)^2) # Mean Squared Error
+rmse <- sqrt(mse)
+
+mse
+rmse
+```
+
+- AUC/BIC Score comparison (keeping/removing X4)
+
+```{r}
+aic_value1 <- AIC(ml_model2)
+bic_value1 <- BIC(ml_model2)
+
+aic_value2 <- AIC(ml_noX4_regression_model2)
+bic_value2 <- BIC(ml_noX4_regression_model2)
+
+cat("AIC for model1: ", aic_value1, "\n")
+cat("BIC for model1: ", bic_value1, "\n")
+cat("\n")
+cat("AIC for model2: ", aic_value2, "\n")
+cat("BIC for model2: ", bic_value2, "\n")
+```
+
+- stepwise evaluations
+
+```{r}
+backward_lm2 <- step(ml_model2, direction = "backward")
+summary(backward_lm2)
+```
+
+```{r}
+forward_lm2 <- step(ml_model2, direction = "forward")
+summary(forward_lm2)
+```
+
+```{r}
+bidirectional_lm2 <- step(ml_model2, direction = "both")
+summary(bidirectional_lm2)
+```
+
+- using LASSO
+
+```{r}
+# Prepare the predictor and response variables for training data
+X_train2 <- as.matrix(train_data2[, -which(names(train_data2) == "Y2_Cooling_Load")])  # predictors
+Y_train2 <- train_data2$Y2_Cooling_Load  # target variable
+
+# Prepare the predictor and response variables for validation and test data
+X_valid2 <- as.matrix(valid_data2[, -which(names(valid_data2) == "Y2_Cooling_Load")])
+Y_valid2 <- valid_data2$Y2_Cooling_Load
+
+X_test2 <- as.matrix(test_data2[, -which(names(test_data2) == "Y2_Cooling_Load")])
+Y_test2 <- test_data2$Y2_Cooling_Load
+
+# Fit Lasso model using training data
+lasso_model2 <- glmnet(X_train2, Y_train2, alpha = 1)
+cv_lasso2 <- cv.glmnet(X_train2, Y_train2, alpha = 1)
+
+lasso_pred_val2 <- predict(cv_lasso2, s = "lambda.min", newx = X_valid2)
+
+rmse <- sqrt(mean((lasso_pred_val2 - Y_valid2)^2))
+print(paste("RMSE on Validation Data: ", rmse))
+
+# Calculate R-squared
+residuals <- Y_valid2 - lasso_pred_val2
+ss_total <- sum((Y_valid2 - mean(Y_valid2))^2)
+ss_residual <- sum(residuals^2)
+r_squared <- 1 - (ss_residual / ss_total)
+print(paste("R-squared: ", r_squared))
+```
+
+```{r}
+lasso_pred_test2 <- predict(cv_lasso2, s = "lambda.min", newx = X_test2)
+
+# Calculate RMSE (Root Mean Squared Error) on Test Data
+rmse <- sqrt(mean((lasso_pred_test2 - Y_test2)^2))
+print(paste("RMSE on Test Data: ", rmse))
+
+# Calculate R-squared on Test Data
+residuals <- Y_test2 - lasso_pred_test2
+ss_total <- sum((Y_test2 - mean(Y_test2))^2)
+ss_residual <- sum(residuals^2)
+r_squared <- 1 - (ss_residual / ss_total)
+print(paste("R-squared on Test Data: ", r_squared))
+```
+
+- AIC/BIC Score for Lasso
+
+```{r}
+# Number of observations and non-zero coefficients (parameters)
+n <- length(Y_test2)
+p <- sum(coef(cv_lasso2, s = "lambda.min") != 0)  # count the number of non-zero coefficients
+
+# Calculate AIC
+aic <- n * log(ss_residual / n) + 2 * p
+print(paste("AIC: ", aic))
+
+# Calculate BIC
+bic <- n * log(ss_residual / n) + p * log(n)
+print(paste("BIC: ", bic))
+```
