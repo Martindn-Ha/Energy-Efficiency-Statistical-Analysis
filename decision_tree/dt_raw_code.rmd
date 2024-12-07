@@ -1,9 +1,9 @@
 ---
-title: 'Project 2: Energy-Efficiency-Statistical-Analysis, Draft 1'
+title: 'DT Raw Code'
 author: "Christina Mourad, Victor Um, Joe De Leon, Martin Ha"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -396,7 +396,7 @@ grid <- expand.grid(
 # Train the model with cross-validation and hyperparameter grid search
 grid_search2 <- train(
   Y2 ~ X1 + X2 + 
-    X3 + X4 + X5 + 
+    X3 + X5 + 
     X6 + X7 + X8,
   data = train_data,
   method = "rpart",  # Decision tree method
@@ -409,7 +409,7 @@ grid_search2 <- train(
 
 ```{r}
 best_model <- grid_search2$finalModel
-predictions <- predict(best_model, newdata = validation_data)
+predictions <- predict(grid_search2, newdata = validation_data)
 
 actual_validation <- validation_data$Y2
 validation_mse <- mean((predictions - actual_validation)^2)
