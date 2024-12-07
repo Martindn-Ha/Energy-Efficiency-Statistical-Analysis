@@ -1,9 +1,9 @@
 ---
-title: 'Project 2: Energy-Efficiency-Statistical-Analysis, Draft 1'
+title: 'Ml Raw Code'
 author: "Christina Mourad, Victor Um, Joe De Leon, Martin Ha"
 date: "`r Sys.Date()`"
 output:
-  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -88,8 +88,8 @@ ml_model <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area +
             X3_Wall_Area + X4_Roof_Area + X5_Overall_Height + 
             X6_Orientation + X7_Glazing_Area + X8_Glazing_Area_Distribution, 
             data = train_data)
-#plot(ml_model)
-#summary(ml_model)
+plot(ml_model)
+summary(ml_model)
 ```
 
 - validation for model 1
@@ -117,7 +117,7 @@ rmse
 -currently anti-aliasing original model to use VIF
 
 ```{r}
-#alias(model)
+alias(ml_model)
 #remove X4 because of perfect dependence on other variable(s)
 ml_noX4_regression_model2 <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area + 
             X3_Wall_Area + X5_Overall_Height + 
@@ -324,7 +324,7 @@ rmse
 -currently anti-aliasing original model2 to use VIF
 
 ```{r}
-#alias(model)
+alias(model2)
 #remove X4 because of perfect dependence on other variable(s)
 ml_noX4_regression_model2 <- lm(Y1_Heating_Load ~ X1_Relative_Compactness + X2_Surface_Area + 
             X3_Wall_Area + X5_Overall_Height + 
